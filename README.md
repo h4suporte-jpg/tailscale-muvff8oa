@@ -1,23 +1,34 @@
-# Run Tailscale on Render
+# Render Tailscale subnet router + H4C5 stable bridge
 
-![image](https://github.com/render-examples/tailscale/assets/168030/2513267e-6503-45c6-b596-3713160ae4ec)
+This keeps the original Render Tailscale subnet router and adds a tailnet-only TCP bridge for H4C5.
 
-[Tailscale](https://tailscale.com) is a zero-config VPN service built on top of [Wireguard](https://www.wireguard.com/). It's great for accessing devices and applications behind firewalls, and you can use it to connect to all your private services on Render with this repo.
+Flow:
 
-A Tailscale [subnet router](https://tailscale.com/kb/1019/subnets/) acts as a gateway to your Render private network, enabling connections to any and all internal IPs (of the form `10.x.x.x`) in your Render network.
+```
+H4C5 gateway on admin PC (HMAC signer)
+  -> Tailscale MagicDNS name of this router :19000
+  -> Tailscale TCP Serve
+  -> socat on 127.0.0.1:19000
+  -> h4c5-panel-private:3000 (Render stable internal hostname)
+```
 
-## Deployment
+The private service's 10.x instance IP may change on deploy. This bridge never stores that IP; Render DNS resolves the current instance.
 
-### One Click Deploy
+## Important security property
 
-Use the button below to deploy a Tailscale subnet router on Render. [Generate a Tailscale auth key](https://login.tailscale.com/admin/settings/authkeys) and provide that as the `TAILSCALE_AUTHKEY` environment variable in Render. Use a one-off key for maximum security.
+`PRIVATE_GATEWAY_KEY` does NOT belong in this router. The HMAC signer remains on the administrative PC and the H4C5 backend still verifies it.
 
-The build downloads a static Linux binary from the Tailscale [stable track](https://pkgs.tailscale.com/stable/). Pin the release with `TAILSCALE_VERSION` (set in `render.yaml` for Blueprint deploys, or override in the Render dashboard). Bump it when you want to pick up a newer stable client.
+## Variables
 
-<a href="https://render.com/deploy?repo=https://github.com/render-examples/tailscale/tree/main">
-  <img src="https://render.com/images/deploy-to-render-button.svg" alt="Deploy to Render">
-</a>
+- `TAILSCALE_AUTHKEY`: existing Tailscale auth key
+- `TAILSCALE_VERSION`: default 1.96.4
+- `ADVERTISE_ROUTES`: default 10.0.0.0/8
+- `H4C5_TARGET_HOST`: default h4c5-panel-private
+- `H4C5_TARGET_PORT`: default 3000
+- `H4C5_BRIDGE_PORT`: default 19000
 
-## Usage
-Deploying this repo will create a subnet router in your Tailscale network. The first time you deploy, you'll need to [enable the subnet routes](https://tailscale.com/kb/1019/subnets/#step-3-enable-subnet-routes-from-the-admin-panel) you want access to from the Tailscale admin panel. Once the subnet router is up and running, you can connect to other private services in your Render network. To find the internal IP address for a Render private service, go to the web shell for your subnet router service and run `dig` with the [private service's host name](https://render.com/docs/private-services#connecting-to-a-private-service) as the only argument.
+After deploy, check logs for:
 
+`H4C5 stable bridge ready: tailnet TCP 19000 -> h4c5-panel-private:3000`
+
+Then on the admin PC point `H4C5_PRIVATE_TARGET` to the router's stable MagicDNS FQDN on port 19000.

@@ -1,17 +1,22 @@
 services:
-  - type: worker
-    name: render-subnet-router
-    env: docker
-    autoDeploy: false
-    envVars:
-      - key: TAILSCALE_AUTHKEY
-        sync: false
-      - key: TAILSCALE_VERSION
-        value: 1.96.4
-      - key: ADVERTISE_ROUTES
-        value: 10.0.0.0/8
-    disk:
-      name: tailscale-state
-      mountPath: /var/lib/tailscale
-      sizeGB: 1
-
+- type: worker
+  name: render-subnet-router
+  env: docker
+  autoDeploy: false
+  envVars:
+  - key: TAILSCALE_AUTHKEY
+    sync: false
+  - key: TAILSCALE_VERSION
+    value: 1.96.4
+  - key: ADVERTISE_ROUTES
+    value: 10.0.0.0/8
+  - key: H4C5_TARGET_HOST
+    value: h4c5-panel-private
+  - key: H4C5_TARGET_PORT
+    value: 3000
+  - key: H4C5_BRIDGE_PORT
+    value: 19000
+  disk:
+    name: tailscale-state
+    mountPath: /var/lib/tailscale
+    sizeGB: 1
